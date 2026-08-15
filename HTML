@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Nanda Cell — Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.5/JsBarcode.all.min.js"></script>
+<style>
+:root{
+  --bg:#FFF9F2;
+  --surface:#FFFFFF;
+  --orange:#FF6A13;
+  --orange-deep:#E85A00;
+  --orange-soft:#FFE7D3;
+  --green:#12805C;
+  --green-bright:#22C55E;
+  --green-soft:#DCF5E9;
+  --ink:#211A15;
+  --muted:#8A7F76;
+  --edge:#F0DCC8;
+  --yellow:#FFC53D;
+  --red:#E5484D;
+  --shadow: 0 2px 0 rgba(33,26,21,0.06), 0 8px 24px -12px rgba(33,26,21,0.18);
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:
+    radial-gradient(circle at 6px 6px, rgba(255,106,19,0.08) 1.5px, transparent 1.6px) 0 0/28px 28px,
+    var(--bg);
+  color:var(--ink);
+  font-family:'Inter',sans-serif;
+  min-height:100vh;
+}
+h1,h2,h3,.display{font-family:'Space Grotesk',sans-serif;}
+.mono{font-family:'JetBrains Mono',monospace;}
+button{font-family:inherit;cursor:pointer;}
+input,select{font-family:inherit;}
+
+/* ===== App shell ===== */
+.app{max-width:1180px;margin:0 auto;padding:0 20px 60px;}
+
+.topbar{
+  position:sticky; top:0; z-index:40;
+  background:var(--ink);
+  color:#fff;
+  padding:14px 20px;
+  display:flex; align-items:center; justify-content:space-between; gap:16px;
+  overflow:hidden;
+}
+.topbar::before{
+  content:"";
+  position:absolute; inset:0;
+  background-image:repeating-linear-gradient(90deg, rgba(255,255,255,0.06) 0 2px, transparent 2px 6px, rgba(255,255,255,0.06) 6px 9px, transparent 9px 16px);
+  opacity:.5; pointer-events:none;
+}
+.brand{display:flex;align-items:center;gap:10px;position:relative;z-index:1;}
+.brand .mark{
+  width:34px;height:34px;border-radius:9px;
+  background:linear-gradient(135deg,var(--orange),var(--green));
+  display:flex;align-items:center;justify-content:center;
+  font-weight:700; color:#fff; font-family:'Space Grotesk',sans-serif; font-size:15px;
+}
+.brand .name{font-weight:700;font-size:16px;letter-spacing:.2px;}
+.brand .tag{font-size:11px;color:#C9BFB6;margin-top:1px;}
+.clock{position:relative;z-index:1;text-align:right;font-family:'JetBrains Mono',monospace;font-size:12px;color:#DDD3C9;}
+.clock b{display:block;font-size:15px;color:#fff;letter-spacing:.5px;}
+
+.tabs{
+  display:flex; gap:4px; overflow-x:auto;
+  background:var(--surface);
+  border-bottom:1px solid var(--edge);
+  padding:0 4px; position:sticky; top:62px; z-index:39;
+  box-shadow:0 1px 0 rgba(33,26,21,0.03);
+}
+.tab-btn{
+  border:none;background:transparent;padding:14px 16px;
+  font-size:13.5px; font-weight:600; color:var(--muted);
+  border-bottom:3px solid transparent; white-space:nowrap;
+  transition:color .15s, border-color .15s;
+}
+.tab-btn:hover{color:var(--orange-deep);}
+.tab-btn.active{color:var(--orange-deep); border-bottom-color:var(--orange);}
+
+.view{display:none; padding-top:22px; animation:fadein .25s ease;}
+.view.active{display:block;}
+@keyframes fadein{from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:none;}}
+
+/* ===== Ticket / receipt card ===== */
+.ticket{
+  position:relative;
+  background:var(--surface);
+  border-radius:14px;
+  box-shadow:var(--shadow);
+  padding:18px 18px 16px;
+  border:1px solid var(--edge);
+}
+.ticket.notch::before{
+  content:"";
+  position:absolute; top:-1px; left:0; right:0; height:10px;
+  background-image:radial-gradient(circle 6px at 6px 0, var(--bg) 6px, transparent 7px);
+  background-size:22px 12px; background-repeat:repeat-x;
+  background-position:2px -6px;
+}
+.card-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:14px;}
+.card-grid.cols-3{grid-template-columns:repeat(3,1fr);}
+.card-grid.cols-2{grid-template-columns:repeat(2,1fr);}
+@media (max-width:900px){ .card-grid, .card-grid.cols-3, .card-grid.cols-2{grid-template-columns:repeat(2,1fr);} }
+@media (max-width:600px){ .card-grid, .card-grid.cols-3, .card-grid.cols-2{grid-template-columns:1fr;} }
+
+.stat-label{font-size:11.5px; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:.5px;}
+.stat-value{font-family:'Space Grotesk',sans-serif; font-size:26px; font-weight:700; margin-top:6px; line-height:1.1;}
+.stat-sub{font-size:12px; color:var(--muted); margin-top:6px;}
+.stat-icon{
+  position:absolute; top:14px; right:14px; width:34px; height:34px; border-radius:9px;
+  display:flex; align-items:center; justify-content:center; font-size:16px;
+}
+.pill{display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:700; padding:3px 9px; border-radius:99px;}
+.pill.up{background:var(--green-soft); color:var(--green);}
+.pill.down{background:#FDE8E8; color:var(--red);}
+
+.section-title{display:flex; align-items:center; justify-content:space-between; margin:28px 0 12px;}
+.section-title h2{font-size:16px; margin:0; display:flex; align-items:center; gap:8px;}
+.section-title .hint{font-size:12px; color:var(--muted);}
+
+.dashed-divider{border:none; border-top:2px dashed var(--edge); margin:16px 0;}
+
+/* ===== buttons / forms ===== */
+.btn{
+  display:inline-flex; align-items:center; gap:6px;
+  padding:10px 16px; border-radius:10px; border:none; font-weight:700; font-size:13px;
+  background:var(--orange); color:#fff; box-shadow:0 3px 0 var(--orange-deep);
+  transition:transform .08s;
+}
+.btn:active{transform:translateY(2px); box-shadow:0 1px 0 var(--orange-deep);}
+.btn.green{background:var(--green); box-shadow:0 3px 0 #0B5C42;}
+.btn.ghost{background:transparent; color:var(--ink); box-shadow:none; border:1.5px solid var(--edge);}
+.btn.sm{padding:7px 12px; font-size:12px;}
+.btn.block{width:100%; justify-content:center;}
+
+.field{margin-bottom:12px;}
+.field label{display:block; font-size:12px; font-weight:700; color:var(--muted); margin-bottom:5px; text-transform:uppercase; letter-spacing:.3px;}
+.field input, .field select{
+  width:100%; padding:10px 12px; border-radius:9px; border:1.5px solid var(--edge);
+  font-size:13.5px; background:#fff; color:var(--ink);
+}
+.field input:focus, .field select:focus{outline:2px solid var(--orange); outline-offset:1px; border-color:var(--orange);}
+
+table{width:100%; border-collapse:collapse; font-size:13px;}
+th{text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.4px; color:var(--muted); padding:8px 10px; border-bottom:2px solid var(--edge);}
+td{padding:9px 10px; border-bottom:1px solid var(--edge);}
+tr:last-child td{border-bottom:none;}
+.badge{padding:3px 9px; border-radius:99px; font-size:11px; font-weight:700;}
+.badge.ontime{background:var(--green-soft); color:var(--green);}
+.badge.late{background:#FDE8E8; color:var(--red);}
+.empty{padding:26px; text-align:center; color:var(--muted); font-size:13px;}
+
+/* ===== Barcode scan panel ===== */
+.scan-wrap{
+  background:linear-gradient(135deg, var(--ink), #34281F);
+  border-radius:16px; padding:32px 22px; text-align:center; color:#fff; position:relative; overflow:hidden;
+}
+.scan-wrap .bars{
+  position:absolute; inset:0; opacity:.12;
+  background-image:repeating-linear-gradient(90deg, #fff 0 3px, transparent 3px 7px, #fff 7px 8px, transparent 8px 15px);
+}
+.scan-line-box{
+  width:min(360px,90%); height:86px; margin:18px auto; border-radius:12px;
+  background:rgba(255,255,255,0.06); border:1.5px dashed rgba(255,255,255,0.35);
+  position:relative; overflow:hidden; display:flex; align-items:center; justify-content:center;
+}
+.scan-line-box .laser{
+  position:absolute; left:6%; right:6%; height:2px; background:var(--orange); border-radius:2px;
+  box-shadow:0 0 10px 2px var(--orange);
+  animation:scan 1.6s ease-in-out infinite;
+}
+@keyframes scan{0%{top:12%;} 50%{top:85%;} 100%{top:12%;}}
+.scan-input{
+  width:min(420px,92%); margin:14px auto 0; display:block; text-align:center;
+  padding:13px 14px; border-radius:10px; border:none; font-size:15px; font-family:'JetBrains Mono',monospace;
+  letter-spacing:1px;
+}
+.scan-msg{margin-top:14px; font-size:13px; color:#D8CFC5; min-height:20px;}
+.scan-msg.ok{color:var(--green-bright); font-weight:700;}
+.scan-msg.err{color:#FF9B9B; font-weight:700;}
+
+.toast{
+  position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(20px);
+  background:var(--ink); color:#fff; padding:13px 20px; border-radius:12px; font-size:13.5px; font-weight:600;
+  box-shadow:0 10px 30px rgba(0,0,0,0.25); opacity:0; pointer-events:none; transition:all .25s ease; z-index:100;
+  display:flex; align-items:center; gap:8px;
+}
+.toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+.toast.ok{background:var(--green);}
+.toast.err{background:var(--red);}
+
+/* progress bar */
+.progress-track{height:16px; border-radius:99px; background:var(--orange-soft); overflow:hidden; position:relative;}
+.progress-fill{height:100%; border-radius:99px; background:linear-gradient(90deg,var(--orange),var(--green)); transition:width .5s ease;}
+
+.badge-id-card{
+  background:#fff; border-radius:14px; border:1.5px dashed var(--edge); padding:16px; text-align:center;
+}
+.badge-id-card .role{font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px;}
+.badge-id-card .nm{font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:17px; margin:2px 0 10px;}
+
+.chip{display:inline-flex; align-items:center; gap:6px; background:var(--orange-soft); color:var(--orange-deep); font-weight:700; font-size:11.5px; padding:5px 11px; border-radius:99px; margin:3px 4px 0 0;}
+.chip.green{background:var(--green-soft); color:var(--green);}
+
+.trophy-row{display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:1px dashed var(--edge);}
+.trophy-row:last-child{border-bottom:none;}
+.rank{width:26px;height:26px;border-radius:8px;background:var(--orange-soft);color:var(--orange-deep);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0;}
+.rank.gold{background:#FFF1C2;color:#B8860B;}
+
+footer.appfoot{text-align:center; color:var(--muted); font-size:11.5px; margin-top:40px;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <div class="mark">NC</div>
+    <div>
+      <div class="name">NANDA CELL</div>
+      <div class="tag">Dashboard Monitoring Toko</div>
+    </div>
+  </div>
+  <div class="clock"><span id="clockDate">--</span><b id="clockTime">--:--:--</b></div>
+</div>
+
+<div class="tabs" id="tabs">
+  <button class="tab-btn active" data-tab="dashboard">📊 Dashboard</button>
+  <button class="tab-btn" data-tab="absensi">📇 Absensi Barcode</button>
+  <button class="tab-btn" data-tab="transaksi">🧾 Transaksi</button>
+  <button class="tab-btn" data-tab="brilink">🏦 Brilink</button>
+  <button class="tab-btn" data-tab="karyawan">👤 Karyawan</button>
+  <button class="tab-btn" data-tab="target">🎯 Target &amp; Reward</button>
+</div>
+
+<div class="app">
+
+  <!-- =================== DASHBOARD =================== -->
+  <div class="view active" id="view-dashboard">
+
+    <div class="card-grid">
+      <div class="ticket notch" style="position:relative;">
+        <div class="stat-icon" style="background:var(--orange-soft);">🧾</div>
+        <div class="stat-label">Omset Bulan Ini</div>
+        <div class="stat-value mono" id="dOmsetBulan">Rp 0</div>
+        <div class="stat-sub" id="dOmsetBulanSub">—</div>
+      </div>
+      <div class="ticket notch" style="position:relative;">
+        <div class="stat-icon" style="background:var(--green-soft);">📈</div>
+        <div class="stat-label">Omset Tahun Ini</div>
+        <div class="stat-value mono" id="dOmsetTahun">Rp 0</div>
+        <div class="stat-sub" id="dOmsetTahunSub">—</div>
+      </div>
+      <div class="ticket notch" style="position:relative;">
+        <div class="stat-icon" style="background:#E9E6FF;">🏦</div>
+        <div class="stat-label">Brilink Bulan Ini</div>
+        <div class="stat-value mono" id="dBrilinkBulan">Rp 0</div>
+        <div class="stat-sub" id="dBrilinkBulanSub">—</div>
+      </div>
+      <div class="ticket notch" style="position:relative;">
+        <div class="stat-icon" style="background:#FFF1C2;">🟢</div>
+        <div class="stat-label">Karyawan Aktif Hari Ini</div>
+        <div class="stat-value mono" id="dKaryawanAktif">0</div>
+        <div class="stat-sub" id="dKaryawanAktifSub">—</div>
+      </div>
+    </div>
+
+    <div class="section-title"><h2>📆 Tren Omset Bulanan</h2><span class="hint">12 bulan terakhir</span></div>
+    <div class="ticket"><canvas id="chartOmset" height="90"></canvas></div>
+
+    <div class="card-grid cols-3" style="margin-top:26px;">
+      <div class="ticket">
+        <div class="section-title" style="margin:0 0 10px;"><h2>🔥 Produk Terlaris</h2></div>
+        <div id="topProdukList"></div>
+      </div>
+      <div class="ticket">
+        <div class="section-title" style="margin:0 0 10px;"><h2>📅 Hari Teramai</h2></div>
+        <div id="hariTeramaiBox"></div>
+      </div>
+      <div class="ticket">
+        <div class="section-title" style="margin:0 0 10px;"><h2>🛠️ Kegiatan Tersering</h2></div>
+        <div id="kegiatanTeratasList"></div>
+      </div>
+    </div>
+
+    <div class="section-title"><h2>👥 Absensi Hari Ini</h2><span class="hint" id="tglHariIniLabel">—</span></div>
+    <div class="ticket" style="padding:6px 18px 12px;">
+      <table id="tableAbsensiHariIni"><thead><tr><th>Karyawan</th><th>Jam Masuk</th><th>Jam Pulang</th><th>Status</th></tr></thead><tbody></tbody></table>
+    </div>
+
+  </div>
+
+  <!-- =================== ABSENSI / BARCODE =================== -->
+  <div class="view" id="view-absensi">
+    <div class="scan-wrap">
+      <div class="bars"></div>
+      <div style="position:relative;">
+        <h2 style="margin:0 0 4px; font-size:20px;">📇 Scan Barcode Karyawan</h2>
+        <div style="font-size:12.5px; color:#D8CFC5;">Tempelkan scanner ke kolom di bawah lalu scan kartu ID karyawan. Scan pertama = jam masuk, scan kedua di hari yang sama = jam pulang.</div>
+        <div class="scan-line-box"><div class="laser"></div><span style="position:relative;color:#B9AEA3;font-size:11px;letter-spacing:2px;">MENUNGGU SCAN…</span></div>
+        <input id="scanInput" class="scan-input" placeholder="Klik di sini lalu scan / ketik ID karyawan + Enter" autocomplete="off">
+        <div class="scan-msg" id="scanMsg"></div>
+      </div>
+    </div>
+
+    <div class="section-title"><h2>📋 Riwayat Absensi</h2>
+      <select id="filterAbsensiBulan" class="mono" style="padding:7px 10px;border-radius:8px;border:1.5px solid var(--edge);font-size:12.5px;"></select>
+    </div>
+    <div class="ticket" style="padding:6px 18px 12px;">
+      <table id="tableAbsensiLog"><thead><tr><th>Tanggal</th><th>Karyawan</th><th>Jam Masuk</th><th>Jam Pulang</th><th>Status</th><th></th></tr></thead><tbody></tbody></table>
+    </div>
+  </div>
+
+  <!-- =================== TRANSAKSI =================== -->
+  <div class="view" id="view-transaksi">
+    <div class="card-grid cols-2">
+      <div class="ticket">
+        <h2 style="margin-top:0;font-size:15px;">➕ Catat Transaksi Menu</h2>
+        <div class="field"><label>Tanggal</label><input type="date" id="txTanggal"></div>
+        <div class="field"><label>Nama Item</label><input type="text" id="txItem" placeholder="mis. Paket Data 10GB"></div>
+        <div class="field"><label>Jumlah</label><input type="number" id="txQty" min="1" value="1"></div>
+        <div class="field"><label>Harga Satuan (Rp)</label><input type="number" id="txHarga" min="0" placeholder="50000"></div>
+        <div class="field"><label>Karyawan</label><select id="txKaryawan"></select></div>
+        <button class="btn block" onclick="addTransaksi()">Simpan Transaksi</button>
+      </div>
+      <div class="ticket">
+        <h2 style="margin-top:0;font-size:15px;">📊 Ringkasan</h2>
+        <div id="txRingkasan"></div>
+      </div>
+    </div>
+
+    <div class="section-title"><h2>🧾 Riwayat Transaksi</h2>
+      <select id="filterTxBulan" class="mono" style="padding:7px 10px;border-radius:8px;border:1.5px solid var(--edge);font-size:12.5px;"></select>
+    </div>
+    <div class="ticket" style="padding:6px 18px 12px;">
+      <table id="tableTransaksi"><thead><tr><th>Tanggal</th><th>Item</th><th>Qty</th><th>Harga</th><th>Total</th><th>Karyawan</th><th></th></tr></thead><tbody></tbody></table>
+    </div>
+  </div>
+
+  <!-- =================== BRILINK =================== -->
+  <div class="view" id="view-brilink">
+    <div class="card-grid cols-2">
+      <div class="ticket">
+        <h2 style="margin-top:0;font-size:15px;">➕ Catat Transaksi Brilink</h2>
+        <div class="field"><label>Tanggal</label><input type="date" id="brTanggal"></div>
+        <div class="field"><label>Jam</label><input type="time" id="brJam"></div>
+        <div class="field"><label>Jenis Transaksi</label>
+          <select id="brJenis">
+            <option>Tarik Tunai</option><option>Setor Tunai</option><option>Transfer</option><option>Bayar/Top Up</option><option>Lainnya</option>
+          </select>
+        </div>
+        <div class="field"><label>Nominal (Rp)</label><input type="number" id="brNominal" min="0" placeholder="500000"></div>
+        <div class="field"><label>Karyawan</label><select id="brKaryawan"></select></div>
+        <button class="btn green block" onclick="addBrilink()">Simpan Transaksi Brilink</button>
+      </div>
+      <div class="ticket">
+        <h2 style="margin-top:0;font-size:15px;">📊 Ringkasan Brilink</h2>
+        <div id="brRingkasan"></div>
+      </div>
+    </div>
+
+    <div class="section-title"><h2>🏦 Riwayat Brilink</h2>
+      <select id="filterBrBulan" class="mono" style="padding:7px 10px;border-radius:8px;border:1.5px solid var(--edge);font-size:12.5px;"></select>
+    </div>
+    <div class="ticket" style="padding:6px 18px 12px;">
+      <table id="tableBrilink"><thead><tr><th>Tanggal</th><th>Jam</th><th>Jenis</th><th>Nominal</th><th>Karyawan</th><th></th></tr></thead><tbody></tbody></table>
+    </div>
+  </div>
+
+  <!-- =================== KARYAWAN =================== -->
+  <div class="view" id="view-karyawan">
+    <div class="card-grid cols-2">
+      <div class="ticket">
+        <h2 style="margin-top:0;font-size:15px;">➕ Tambah Karyawan</h2>
+        <div class="field"><label>Nama Karyawan</label><input type="text" id="kNama" placeholder="mis. Lisna"></div>
+        <button class="btn block" onclick="addKaryawan()">Simpan &amp; Buatkan Kartu Barcode</button>
+        <hr class="dashed-divider">
+        <h2 style="font-size:15px;">📝 Catat Kegiatan Karyawan</h2>
+        <div class="field"><label>Karyawan</label><select id="kegKaryawan"></select></div>
+        <div class="field"><label>Kegiatan</label>
+          <select id="kegAktivitas">
+            <option>Isi Ulang Pulsa/Paket Data</option>
+            <option>Layani Brilink</option>
+            <option>Servis/Aksesoris HP</option>
+            <option>Terima &amp; Susun Barang</option>
+            <option>Bersih-bersih Toko</option>
+            <option>Lainnya</option>
+          </select>
+        </div>
+        <button class="btn ghost block" onclick="addKegiatan()">Catat Kegiatan</button>
+      </div>
+      <div class="ticket">
+        <h2 style="margin-top:0;font-size:15px;">🪪 Kartu Barcode Karyawan</h2>
+        <div id="karyawanCards" style="display:flex; flex-direction:column; gap:12px;"></div>
+      </div>
+    </div>
+
+    <div class="section-title"><h2>🛠️ Log Kegiatan Karyawan</h2></div>
+    <div class="ticket" style="padding:6px 18px 12px;">
+      <table id="tableKegiatan"><thead><tr><th>Tanggal</th><th>Karyawan</th><th>Kegiatan</th><th></th></tr></thead><tbody></tbody></table>
+    </div>
+  </div>
+
+  <!-- =================== TARGET & REWARD =================== -->
+  <div class="view" id="view-target">
+    <div class="card-grid cols-2">
+      <div class="ticket">
+        <h2 style="margin-top:0;font-size:15px;">🎯 Atur Target Bulan Ini</h2>
+        <div class="field"><label>Target Omset Bulan Ini (Rp)</label><input type="number" id="targetOmset" min="0" placeholder="10000000"></div>
+        <div class="field"><label>Reward Kalau Tercapai</label><input type="text" id="targetReward" placeholder="mis. Bonus Rp 100.000 + makan-makan"></div>
+        <button class="btn block" onclick="saveTarget()">Simpan Target</button>
+      </div>
+      <div class="ticket" id="targetProgressCard">
+        <h2 style="margin-top:0;font-size:15px;">📈 Progress Bulan Ini</h2>
+        <div id="targetProgressBox"></div>
+      </div>
+    </div>
+
+    <div class="section-title"><h2>🏆 Riwayat Target Bulanan</h2></div>
+    <div class="ticket" style="padding:6px 18px 12px;">
+      <table id="tableTargetHistory"><thead><tr><th>Bulan</th><th>Target</th><th>Realisasi</th><th>Status</th><th>Reward</th></tr></thead><tbody></tbody></table>
+    </div>
+  </div>
+
+  <footer class="appfoot">Nanda Cell Dashboard · data tersimpan otomatis di akunmu</footer>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ======================= STATE & STORAGE ======================= */
+const STORE_KEY = 'nanda-cell-data';
+let DB = { karyawan: [], absensi: [], transaksi: [], brilink: [], kegiatan: [], targets: {} };
+
+const MONTHS_ID = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
+const DAYS_ID = ["Minggu","Senin","Selasa","Rabu","Kamis","Jumat","Sabtu"];
+const uid = () => Math.random().toString(36).slice(2,10) + Date.now().toString(36).slice(-4);
+const rupiah = (n) => 'Rp ' + Math.round(n||0).toLocaleString('id-ID');
+const todayStr = () => new Date().toISOString().slice(0,10);
+const ymKey = (dateStr) => dateStr.slice(0,7);
+
+async function loadData(){
+  try{
+    const res = await window.storage.get(STORE_KEY, false);
+    if(res && res.value){
+      const parsed = JSON.parse(res.value);
+      DB = Object.assign(DB, parsed);
+    } else {
+      seedDemoData();
+      await saveData();
+    }
+  }catch(e){
+    console.warn('Belum ada data tersimpan, memakai data awal.', e);
+    seedDemoData();
+    await saveData();
+  }
+}
+
+let saveTimer=null;
+async function saveData(){
+  try{
+    await window.storage.set(STORE_KEY, JSON.stringify(DB), false);
+  }catch(e){
+    console.error('Gagal menyimpan data', e);
+    showToast('Gagal menyimpan data, coba lagi.', 'err');
+  }
+}
+function saveDataDebounced(){
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveData, 250);
+}
+
+function seedDemoData(){
+  const lisnaId = uid();
+  DB.karyawan = [{id:lisnaId, nama:'Lisna', barcode:'EMP-1001'}];
+  const now = new Date();
+  DB.absensi = []; DB.transaksi = []; DB.brilink = []; DB.kegiatan = []; DB.targets = {};
+  // seed a bit of history so charts aren't empty on first run
+  for(let m=5;m>=0;m--){
+    const d = new Date(now.getFullYear(), now.getMonth()-m, 8);
+    const ds = d.toISOString().slice(0,10);
+    DB.transaksi.push({id:uid(), tanggal:ds, item:'Paket Data 10GB', qty:3+m, harga:50000, karyawanId:lisnaId});
+    DB.transaksi.push({id:uid(), tanggal:ds, item:'Pulsa 25rb', qty:5, harga:26000, karyawanId:lisnaId});
+    DB.brilink.push({id:uid(), tanggal:ds, jam:'10:15', jenis:'Tarik Tunai', nominal:500000+m*50000, karyawanId:lisnaId});
+  }
+  const ym = now.toISOString().slice(0,7);
+  DB.targets[ym] = {targetOmset:8000000, reward:'Bonus Rp100.000'};
+}
+
+/* ======================= TABS ======================= */
+document.getElementById('tabs').addEventListener('click', (e)=>{
+  const btn = e.target.closest('.tab-btn'); if(!btn) return;
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('view-'+btn.dataset.tab).classList.add('active');
+  if(btn.dataset.tab==='absensi'){ document.getElementById('scanInput').focus(); }
+  renderAll();
+});
+
+/* ======================= CLOCK ======================= */
+function tickClock(){
+  const d = new Date();
+  document.getElementById('clockDate').textContent = DAYS_ID[d.getDay()]+', '+d.getDate()+' '+MONTHS_ID[d.getMonth()]+' '+d.getFullYear();
+  document.getElementById('clockTime').textContent = d.toLocaleTimeString('id-ID',{hour12:false});
+}
+setInterval(tickClock,1000);
+
+/* ======================= TOAST ======================= */
+let toastTimer=null;
+function showToast(msg, type){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + (type||'');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>{ t.classList.remove('show'); }, 3200);
+}
+
+/* ======================= KARYAWAN HELPERS ======================= */
+function karyawanName(id){ const k = DB.karyawan.find(x=>x.id===id); return k? k.nama : '(tidak diketahui)'; }
+function fillKaryawanSelects(){
+  const opts = DB.karyawan.map(k=>`<option value="${k.id}">${k.nama}</option>`).join('');
+  ['txKaryawan','brKaryawan','kegKaryawan'].forEach(id=>{
+    const el = document.getElementById(id);
+    const cur = el.value;
+    el.innerHTML = opts || '<option value="">Belum ada karyawan</option>';
+    if(cur) el.value = cur;
+  });
+}
+
+/* ======================= INIT DEFAULTS ======================= */
+function initDefaults(){
+  document.getElementById('txTanggal').value = todayStr();
+  document.getElementById('brTanggal').value = todayStr();
+  const now = new Date();
+  document.getElementById('brJam').value = now.toTimeString().slice(0,5);
+}
+
+/* ======================= RENDER: DASHBOARD ======================= */
+let omsetChart=null;
+function renderDashboard(){
+  const now = new Date();
+  const ymNow = now.toISOString().slice(0,7);
+  const yNow = String(now.getFullYear());
+
+  const txBulan = DB.transaksi.filter(t=>ymKey(t.tanggal)===ymNow);
+  const txTahun = DB.transaksi.filter(t=>t.tanggal.slice(0,4)===yNow);
+  const brBulan = DB.brilink.filter(b=>ymKey(b.tanggal)===ymNow);
+
+  const omsetBulan = txBulan.reduce((s,t)=>s+t.qty*t.harga,0);
+  const omsetTahun = txTahun.reduce((s,t)=>s+t.qty*t.harga,0);
+  const brilinkBulan = brBulan.reduce((s,b)=>s+Number(b.nominal||0),0);
+
+  document.getElementById('dOmsetBulan').textContent = rupiah(omsetBulan);
+  document.getElementById('dOmsetBulanSub').textContent = MONTHS_ID[now.getMonth()]+' '+now.getFullYear()+' · '+txBulan.length+' transaksi';
+  document.getElementById('dOmsetTahun').textContent = rupiah(omsetTahun);
+  document.getElementById('dOmsetTahunSub').textContent = 'Tahun '+now.getFullYear();
+  document.getElementById('dBrilinkBulan').textContent = rupiah(brilinkBulan);
+  document.getElementById('dBrilinkBulanSub').textContent = brBulan.length+' transaksi Brilink';
+
+  const absensiHariIni = DB.absensi.filter(a=>a.tanggal===todayStr());
+  document.getElementById('dKaryawanAktif').textContent = absensiHariIni.length + ' / ' + DB.karyawan.length;
+  document.getElementById('dKaryawanAktifSub').textContent = DB.karyawan.length? 'karyawan sudah absen hari ini' : 'Belum ada karyawan terdaftar';
+
+  // chart 12 bulan
+  const labels=[], values=[];
+  for(let i=11;i>=0;i--){
+    const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
+    const ym = d.toISOString().slice(0,7);
+    labels.push(MONTHS_ID[d.getMonth()].slice(0,3)+" '"+String(d.getFullYear()).slice(2));
+    const sum = DB.transaksi.filter(t=>ymKey(t.tanggal)===ym).reduce((s,t)=>s+t.qty*t.harga,0);
+    values.push(sum);
+  }
+  const ctx = document.getElementById('chartOmset').getContext('2d');
+  if(omsetChart) omsetChart.destroy();
+  omsetChart = new Chart(ctx, {
+    type:'bar',
+    data:{ labels, datasets:[{ label:'Omset', data:values, backgroundColor:'#FF6A13', borderRadius:6, maxBarThickness:34 }]},
+    options:{
+      plugins:{legend:{display:false}, tooltip:{callbacks:{label:(c)=>rupiah(c.parsed.y)}}},
+      scales:{ y:{ ticks:{ callback:(v)=> (v>=1000000? (v/1000000)+'jt' : v>=1000? (v/1000)+'rb': v) }, grid:{color:'#F0DCC8'} }, x:{grid:{display:false}} }
+    }
+  });
+
+  // top produk (bulan ini)
+  const prodMap = {};
+  txBulan.forEach(t=>{ prodMap[t.item] = (prodMap[t.item]||0) + t.qty; });
+  const topProduk = Object.entries(prodMap).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const topProdukEl = document.getElementById('topProdukList');
+  topProdukEl.innerHTML = topProduk.length ? topProduk.map(([nm,qty],i)=>`
+    <div class="trophy-row"><div class="rank ${i===0?'gold':''}">${i+1}</div>
+      <div style="flex:1;"><div style="font-weight:600;font-size:13px;">${nm}</div></div>
+      <div class="mono" style="font-weight:700;font-size:13px;">${qty}x</div>
+    </div>`).join('') : `<div class="empty">Belum ada transaksi bulan ini</div>`;
+
+  // hari teramai (all-time, by omset)
+  const dayMap = {};
+  DB.transaksi.forEach(t=>{ dayMap[t.tanggal] = (dayMap[t.tanggal]||0) + t.qty*t.harga; });
+  const hariTeramai = Object.entries(dayMap).sort((a,b)=>b[1]-a[1])[0];
+  const hariBox = document.getElementById('hariTeramaiBox');
+  if(hariTeramai){
+    const d = new Date(hariTeramai[0]+'T00:00:00');
+    hariBox.innerHTML = `
+      <div style="text-align:center;padding:8px 0;">
+        <div class="chip">${DAYS_ID[d.getDay()]}</div>
+        <div class="stat-value mono" style="margin-top:10px;">${rupiah(hariTeramai[1])}</div>
+        <div class="stat-sub">${d.getDate()} ${MONTHS_ID[d.getMonth()]} ${d.getFullYear()}</div>
+      </div>`;
+  } else { hariBox.innerHTML = `<div class="empty">Belum ada data transaksi</div>`; }
+
+  // kegiatan tersering (all employees combined, top 4)
+  const kegMap = {};
+  DB.kegiatan.forEach(k=>{ kegMap[k.aktivitas] = (kegMap[k.aktivitas]||0)+1; });
+  const kegTop = Object.entries(kegMap).sort((a,b)=>b[1]-a[1]).slice(0,4);
+  document.getElementById('kegiatanTeratasList').innerHTML = kegTop.length ? kegTop.map(([nm,ct],i)=>`
+    <div class="trophy-row"><div class="rank ${i===0?'gold':''}">${i+1}</div>
+      <div style="flex:1;font-size:13px;font-weight:600;">${nm}</div>
+      <div class="mono" style="font-weight:700;font-size:13px;">${ct}x</div>
+    </div>`).join('') : `<div class="empty">Belum ada kegiatan tercatat</div>`;
+
+  document.getElementById('tglHariIniLabel').textContent = DAYS_ID[now.getDay()]+', '+now.getDate()+' '+MONTHS_ID[now.getMonth()]+' '+now.getFullYear();
+  const tb = document.querySelector('#tableAbsensiHariIni tbody');
+  tb.innerHTML = absensiHariIni.length ? absensiHariIni.map(a=>`
+    <tr><td>${karyawanName(a.karyawanId)}</td><td class="mono">${a.jamMasuk||'-'}</td><td class="mono">${a.jamPulang||'-'}</td>
+      <td>${statusBadge(a)}</td></tr>`).join('') : `<tr><td colspan="4" class="empty">Belum ada yang absen hari ini</td></tr>`;
+}
+function statusBadge(a){
+  if(!a.jamMasuk) return '';
+  const [h,m] = a.jamMasuk.split(':').map(Number);
+  const late = (h*60+m) > (8*60);
+  return a.jamPulang ? `<span class="badge ontime">Selesai</span>` : `<span class="badge ${late?'late':'ontime'}">${late?'Telat masuk':'Sedang bekerja'}</span>`;
+}
+
+/* ======================= ABSENSI / BARCODE SCAN ======================= */
+function processScan(code){
+  code = code.trim();
+  const msgEl = document.getElementById('scanMsg');
+  if(!code){ return; }
+  const k = DB.karyawan.find(x=>x.barcode.toLowerCase()===code.toLowerCase());
+  if(!k){
+    msgEl.textContent = '❌ Barcode "'+code+'" tidak dikenali. Cek kartu karyawan di tab Karyawan.';
+    msgEl.className = 'scan-msg err';
+    showToast('Barcode tidak dikenali', 'err');
+    return;
+  }
+  const today = todayStr();
+  const now = new Date().toTimeString().slice(0,5);
+  let rec = DB.absensi.find(a=>a.karyawanId===k.id && a.tanggal===today);
+  if(!rec){
+    DB.absensi.push({id:uid(), tanggal:today, karyawanId:k.id, jamMasuk:now, jamPulang:null});
+    msgEl.textContent = '✅ '+k.nama+' — Jam Masuk tercatat pukul '+now;
+    msgEl.className = 'scan-msg ok';
+    showToast(k.nama+' absen masuk · '+now, 'ok');
+  } else if(!rec.jamPulang){
+    rec.jamPulang = now;
+    msgEl.textContent = '🏁 '+k.nama+' — Jam Pulang tercatat pukul '+now;
+    msgEl.className = 'scan-msg ok';
+    showToast(k.nama+' absen pulang · '+now, 'ok');
+  } else {
+    msgEl.textContent = 'ℹ️ '+k.nama+' sudah absen masuk & pulang hari ini.';
+    msgEl.className = 'scan-msg';
+    showToast(k.nama+' sudah lengkap absen hari ini');
+  }
+  saveDataDebounced();
+  renderAll();
+}
+document.getElementById('scanInput').addEventListener('keydown', (e)=>{
+  if(e.key==='Enter'){
+    const val = e.target.value;
+    e.target.value='';
+    processScan(val);
+  }
+});
+
+function populateMonthFilter(selectId, dataArr, onChange){
+  const el = document.getElementById(selectId);
+  const months = Array.from(new Set(dataArr.map(d=>ymKey(d.tanggal)))).sort().reverse();
+  const nowYm = todayStr().slice(0,7);
+  if(!months.includes(nowYm)) months.unshift(nowYm);
+  el.innerHTML = '<option value="all">Semua Bulan</option>' + months.map(ym=>{
+    const [y,m] = ym.split('-');
+    return `<option value="${ym}">${MONTHS_ID[Number(m)-1]} ${y}</option>`;
+  }).join('');
+  el.value = nowYm;
+  el.onchange = onChange;
+}
+
+function renderAbsensiTab(){
+  populateMonthFilter('filterAbsensiBulan', DB.absensi, renderAbsensiTab);
+  const filterVal = document.getElementById('filterAbsensiBulan').value || 'all';
+  let rows = [...DB.absensi].sort((a,b)=> b.tanggal.localeCompare(a.tanggal));
+  if(filterVal!=='all') rows = rows.filter(a=>ymKey(a.tanggal)===filterVal);
+  const tb = document.querySelector('#tableAbsensiLog tbody');
+  tb.innerHTML = rows.length ? rows.map(a=>`
+    <tr><td class="mono">${fmtDate(a.tanggal)}</td><td>${karyawanName(a.karyawanId)}</td>
+      <td class="mono">${a.jamMasuk||'-'}</td><td class="mono">${a.jamPulang||'-'}</td>
+      <td>${statusBadge(a)}</td>
+      <td><button class="btn ghost sm" onclick="deleteRecord('absensi','${a.id}')">Hapus</button></td></tr>`).join('')
+    : `<tr><td colspan="6" class="empty">Belum ada riwayat absensi</td></tr>`;
+}
+function fmtDate(ds){ const d = new Date(ds+'T00:00:00'); return d.getDate()+' '+MONTHS_ID[d.getMonth()].slice(0,3)+' '+d.getFullYear(); }
+
+/* ======================= TRANSAKSI ======================= */
+function addTransaksi(){
+  const tanggal = document.getElementById('txTanggal').value;
+  const item = document.getElementById('txItem').value.trim();
+  const qty = Number(document.getElementById('txQty').value);
+  const harga = Number(document.getElementById('txHarga').value);
+  const karyawanId = document.getElementById('txKaryawan').value;
+  if(!tanggal || !item || !qty || !harga){ showToast('Lengkapi semua kolom transaksi dulu ya','err'); return; }
+  DB.transaksi.push({id:uid(), tanggal, item, qty, harga, karyawanId});
+  document.getElementById('txItem').value=''; document.getElementById('txQty').value=1; document.getElementById('txHarga').value='';
+  showToast('Transaksi "'+item+'" tersimpan','ok');
+  saveDataDebounced(); renderAll();
+}
+function renderTransaksiTab(){
+  populateMonthFilter('filterTxBulan', DB.transaksi, renderTransaksiTab);
+  const filterVal = document.getElementById('filterTxBulan').value || 'all';
+  let rows = [...DB.transaksi].sort((a,b)=> b.tanggal.localeCompare(a.tanggal));
+  if(filterVal!=='all') rows = rows.filter(t=>ymKey(t.tanggal)===filterVal);
+  const tb = document.querySelector('#tableTransaksi tbody');
+  tb.innerHTML = rows.length ? rows.map(t=>`
+    <tr><td class="mono">${fmtDate(t.tanggal)}</td><td>${t.item}</td><td class="mono">${t.qty}</td>
+      <td class="mono">${rupiah(t.harga)}</td><td class="mono" style="font-weight:700;">${rupiah(t.qty*t.harga)}</td>
+      <td>${karyawanName(t.karyawanId)}</td>
+      <td><button class="btn ghost sm" onclick="deleteRecord('transaksi','${t.id}')">Hapus</button></td></tr>`).join('')
+    : `<tr><td colspan="7" class="empty">Belum ada transaksi</td></tr>`;
+
+  const relevant = filterVal==='all' ? DB.transaksi : rows;
+  const total = relevant.reduce((s,t)=>s+t.qty*t.harga,0);
+  const itemCount = relevant.reduce((s,t)=>s+t.qty,0);
+  document.getElementById('txRingkasan').innerHTML = `
+    <div class="stat-label">Total Omset (filter aktif)</div><div class="stat-value mono">${rupiah(total)}</div>
+    <div class="stat-sub">${relevant.length} transaksi · ${itemCount} item terjual</div>`;
+}
+
+/* ======================= BRILINK ======================= */
+function addBrilink(){
+  const tanggal = document.getElementById('brTanggal').value;
+  const jam = document.getElementById('brJam').value;
+  const jenis = document.getElementById('brJenis').value;
+  const nominal = Number(document.getElementById('brNominal').value);
+  const karyawanId = document.getElementById('brKaryawan').value;
+  if(!tanggal || !jam || !nominal){ showToast('Lengkapi semua kolom Brilink dulu ya','err'); return; }
+  DB.brilink.push({id:uid(), tanggal, jam, jenis, nominal, karyawanId});
+  document.getElementById('brNominal').value='';
+  showToast('Transaksi Brilink tersimpan','ok');
+  saveDataDebounced(); renderAll();
+}
+function renderBrilinkTab(){
+  populateMonthFilter('filterBrBulan', DB.brilink, renderBrilinkTab);
+  const filterVal = document.getElementById('filterBrBulan').value || 'all';
+  let rows = [...DB.brilink].sort((a,b)=> (b.tanggal+b.jam).localeCompare(a.tanggal+a.jam));
+  if(filterVal!=='all') rows = rows.filter(b=>ymKey(b.tanggal)===filterVal);
+  const tb = document.querySelector('#tableBrilink tbody');
+  tb.innerHTML = rows.length ? rows.map(b=>`
+    <tr><td class="mono">${fmtDate(b.tanggal)}</td><td class="mono">${b.jam}</td><td>${b.jenis}</td>
+      <td class="mono">${rupiah(b.nominal)}</td><td>${karyawanName(b.karyawanId)}</td>
+      <td><button class="btn ghost sm" onclick="deleteRecord('brilink','${b.id}')">Hapus</button></td></tr>`).join('')
+    : `<tr><td colspan="6" class="empty">Belum ada transaksi Brilink</td></tr>`;
+
+  const relevant = filterVal==='all' ? DB.brilink : rows;
+  const total = relevant.reduce((s,b)=>s+Number(b.nominal||0),0);
+  document.getElementById('brRingkasan').innerHTML = `
+    <div class="stat-label">Total Nominal (filter aktif)</div><div class="stat-value mono">${rupiah(total)}</div>
+    <div class="stat-sub">${relevant.length} kali transaksi</div>`;
+}
+
+/* ======================= KARYAWAN ======================= */
+function addKaryawan(){
+  const nama = document.getElementById('kNama').value.trim();
+  if(!nama){ showToast('Isi nama karyawan dulu','err'); return; }
+  const barcode = 'EMP-' + (1000 + DB.karyawan.length + 1);
+  DB.karyawan.push({id:uid(), nama, barcode});
+  document.getElementById('kNama').value='';
+  showToast('Karyawan '+nama+' ditambahkan','ok');
+  saveDataDebounced(); renderAll();
+}
+function addKegiatan(){
+  const karyawanId = document.getElementById('kegKaryawan').value;
+  const aktivitas = document.getElementById('kegAktivitas').value;
+  if(!karyawanId){ showToast('Belum ada karyawan terdaftar','err'); return; }
+  DB.kegiatan.push({id:uid(), tanggal:todayStr(), karyawanId, aktivitas});
+  showToast('Kegiatan dicatat: '+aktivitas,'ok');
+  saveDataDebounced(); renderAll();
+}
+function renderKaryawanTab(){
+  const wrap = document.getElementById('karyawanCards');
+  wrap.innerHTML = DB.karyawan.length ? DB.karyawan.map(k=>`
+    <div class="badge-id-card">
+      <div class="role">NANDA CELL · ID KARYAWAN</div>
+      <div class="nm">${k.nama}</div>
+      <svg id="bc-${k.id}"></svg>
+    </div>`).join('') : `<div class="empty">Belum ada karyawan. Tambahkan di form sebelah.</div>`;
+  DB.karyawan.forEach(k=>{
+    try{
+      JsBarcode('#bc-'+k.id, k.barcode, {format:'CODE128', height:46, width:2, fontSize:13, margin:6, background:'transparent', lineColor:'#211A15'});
+    }catch(e){ console.warn('barcode render gagal', e); }
+  });
+
+  const tb = document.querySelector('#tableKegiatan tbody');
+  const rows = [...DB.kegiatan].sort((a,b)=> b.tanggal.localeCompare(a.tanggal)).slice(0,60);
+  tb.innerHTML = rows.length ? rows.map(k=>`
+    <tr><td class="mono">${fmtDate(k.tanggal)}</td><td>${karyawanName(k.karyawanId)}</td><td>${k.aktivitas}</td>
+      <td><button class="btn ghost sm" onclick="deleteRecord('kegiatan','${k.id}')">Hapus</button></td></tr>`).join('')
+    : `<tr><td colspan="4" class="empty">Belum ada kegiatan tercatat</td></tr>`;
+}
+
+/* ======================= TARGET & REWARD ======================= */
+function saveTarget(){
+  const ym = todayStr().slice(0,7);
+  const targetOmset = Number(document.getElementById('targetOmset').value);
+  const reward = document.getElementById('targetReward').value.trim();
+  if(!targetOmset){ showToast('Isi target omset dulu','err'); return; }
+  DB.targets[ym] = {targetOmset, reward};
+  showToast('Target bulan ini tersimpan','ok');
+  saveDataDebounced(); renderAll();
+}
+function renderTargetTab(){
+  const ym = todayStr().slice(0,7);
+  const now = new Date();
+  const t = DB.targets[ym];
+  document.getElementById('targetOmset').value = t? t.targetOmset : '';
+  document.getElementById('targetReward').value = t? t.reward : '';
+
+  const omsetBulan = DB.transaksi.filter(x=>ymKey(x.tanggal)===ym).reduce((s,x)=>s+x.qty*x.harga,0);
+  const box = document.getElementById('targetProgressBox');
+  if(!t){
+    box.innerHTML = `<div class="empty">Belum ada target untuk ${MONTHS_ID[now.getMonth()]} ${now.getFullYear()}. Atur di form sebelah.</div>`;
+  } else {
+    const pct = Math.min(100, Math.round((omsetBulan/t.targetOmset)*100));
+    const achieved = omsetBulan >= t.targetOmset;
+    box.innerHTML = `
+      <div style="display:flex;justify-content:space-between;font-size:12.5px;color:var(--muted);margin-bottom:8px;">
+        <span class="mono">${rupiah(omsetBulan)}</span><span class="mono">${rupiah(t.targetOmset)}</span>
+      </div>
+      <div class="progress-track"><div class="progress-fill" style="width:${pct}%;"></div></div>
+      <div style="text-align:center;margin-top:10px;">
+        <span class="pill ${achieved?'up':'down'}">${pct}% tercapai</span>
+      </div>
+      ${achieved ? `
+        <div style="margin-top:16px;background:var(--green-soft);border-radius:12px;padding:14px;text-align:center;">
+          <div style="font-size:22px;">🎉🏆</div>
+          <div style="font-weight:700;color:var(--green);margin-top:4px;">Target Tercapai!</div>
+          <div style="font-size:12.5px;color:var(--ink);margin-top:4px;">${t.reward? 'Reward: '+t.reward : 'Saatnya kasih apresiasi ke tim!'}</div>
+        </div>` : `
+        <div style="margin-top:14px;font-size:12px;color:var(--muted);text-align:center;">Kurang ${rupiah(Math.max(0,t.targetOmset-omsetBulan))} lagi menuju target 💪</div>`}
+    `;
+  }
+
+  const tb = document.querySelector('#tableTargetHistory tbody');
+  const entries = Object.entries(DB.targets).sort((a,b)=> b[0].localeCompare(a[0]));
+  tb.innerHTML = entries.length ? entries.map(([ymKeyStr,val])=>{
+    const [y,m] = ymKeyStr.split('-');
+    const realisasi = DB.transaksi.filter(x=>ymKey(x.tanggal)===ymKeyStr).reduce((s,x)=>s+x.qty*x.harga,0);
+    const ok = realisasi >= val.targetOmset;
+    return `<tr><td>${MONTHS_ID[Number(m)-1]} ${y}</td><td class="mono">${rupiah(val.targetOmset)}</td>
+      <td class="mono">${rupiah(realisasi)}</td><td>${ok?'<span class="badge ontime">Tercapai</span>':'<span class="badge late">Belum</span>'}</td>
+      <td>${val.reward||'-'}</td></tr>`;
+  }).join('') : `<tr><td colspan="5" class="empty">Belum ada riwayat target</td></tr>`;
+}
+
+/* ======================= DELETE ======================= */
+function deleteRecord(kind, id){
+  DB[kind] = DB[kind].filter(x=>x.id!==id);
+  saveDataDebounced(); renderAll();
+}
+
+/* ======================= RENDER ALL ======================= */
+function renderAll(){
+  fillKaryawanSelects();
+  renderDashboard();
+  renderAbsensiTab();
+  renderTransaksiTab();
+  renderBrilinkTab();
+  renderKaryawanTab();
+  renderTargetTab();
+}
+
+/* ======================= BOOT ======================= */
+(async function boot(){
+  tickClock();
+  initDefaults();
+  await loadData();
+  renderAll();
+})();
+</script>
+</body>
+</html>
